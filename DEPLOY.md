@@ -1,19 +1,27 @@
-# Deploy DevFlow AI
+# Deploy DevFlow AI — Free (no credit card)
 
-**Vercel** (frontend) + **Render** (backend, worker, Postgres, Redis)
+**Vercel** (frontend) + **Koyeb** (backend) + **Neon** (Postgres)
 
-**Total time: ~25 minutes**
+No worker, no Redis, no paid plans. AI reviews run in-process on the API (already built in).
+
+**Total time: ~20 minutes · $0**
+
+---
+
+## Why not Render?
+
+Render asks for a card when you add a **background worker** (~$7/mo) or sometimes for Postgres. This guide avoids that entirely.
 
 ---
 
 ## Architecture
 
 ```
-Vercel (Next.js)  →  Render API (FastAPI)  →  PostgreSQL
+Vercel (Next.js)  →  Koyeb API (FastAPI)  →  Neon (Postgres)
                               ↓
-                        GitHub Webhooks
+                        GitHub OAuth / Webhooks
                               ↓
-                   Render Worker + Redis  →  OpenAI
+                     In-process AI reviews  →  OpenAI
 ```
 
 ---
@@ -23,159 +31,117 @@ Vercel (Next.js)  →  Render API (FastAPI)  →  PostgreSQL
 ```bash
 cd "/Users/nidhiprajapati/DevFlow AI"
 git add -A
-git commit -m "Production deploy: Vercel + Render"
+git commit -m "Free deploy config"
 git push origin main
 ```
 
-Repo: https://github.com/Nidhi0201/devflow-ai
+---
+
+## Step 2: Neon — free database (no card)
+
+1. Go to [neon.tech](https://neon.tech) → sign up (GitHub login works)
+2. **New Project** → name it `devflow`
+3. Copy the **connection string** (starts with `postgresql://...`)
+4. Keep this for Step 3
 
 ---
 
-## Step 2: Deploy backend on Render
+## Step 3: Koyeb — free backend (no card)
 
-### Option A — Blueprint (recommended)
+1. Go to [koyeb.com](https://www.koyeb.com) → sign up
+2. **Create Web Service** → **GitHub** → select `devflow-ai`
+3. Settings:
+   - **Name:** `devflow-api`
+   - **Root directory / build:** set **Dockerfile path** or use build settings below
+   - **Builder:** Docker — use `backend/Dockerfile`
+   - **Port:** `8000`
+   - **Instance:** Nano (free)
 
-1. Go to [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint**
-2. Connect GitHub → select `devflow-ai`
-3. Render reads `render.yaml` and creates:
-   - **devflow-api** (web service)
-   - **devflow-worker** (background worker)
-   - **devflow-db** (PostgreSQL)
-   - **devflow-redis** (Redis)
-4. When prompted, fill in **sync: false** variables on the **devflow-api** service:
+4. **Environment variables:**
 
 | Variable | Value |
 |----------|-------|
-| `GITHUB_CLIENT_ID` | From GitHub OAuth App |
-| `GITHUB_CLIENT_SECRET` | From GitHub OAuth App |
-| `OPENAI_API_KEY` | Your OpenAI key |
-| `FRONTEND_URL` | `https://YOUR-APP.vercel.app` (set after Step 3) |
+| `ENVIRONMENT` | `production` |
+| `DATABASE_URL` | Neon connection string from Step 2 |
+| `JWT_SECRET` | run `openssl rand -hex 32` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth App |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App |
+| `GITHUB_WEBHOOK_SECRET` | any random string |
+| `OPENAI_API_KEY` | your OpenAI key |
+| `FRONTEND_URL` | `https://YOUR-APP.vercel.app` (after Step 4) |
 
-5. Copy the same GitHub/OpenAI/`FRONTEND_URL` vars onto **devflow-worker**
-6. Wait for deploy → copy API URL (e.g. `https://devflow-api.onrender.com`)
-7. Test: `https://devflow-api.onrender.com/health` → `{"status":"ok"}`
+5. Deploy → copy your Koyeb URL (e.g. `https://devflow-api-xxx.koyeb.app`)
+6. Test: `https://YOUR-KOYEB-URL/health`
 
-> **Note:** Render sets `RENDER_EXTERNAL_URL` automatically — `BACKEND_URL` is optional on Render.
-
-> **Worker plan:** The worker uses Render's **Starter** plan (~$7/mo). Without it, AI reviews still run via a thread fallback on the API (fine for testing, not ideal for production).
-
-### Option B — Manual setup
-
-1. **New** → **PostgreSQL** (free) → name it `devflow-db`
-2. **New** → **Redis** (free) → name it `devflow-redis`
-3. **New** → **Web Service** → connect repo:
-   - **Root Directory:** `backend`
-   - **Runtime:** Python 3
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Health Check Path:** `/health`
-4. Add env vars (see table below)
-5. **New** → **Background Worker** → same repo, root `backend`:
-   - **Start Command:** `python -m app.worker.runner`
-   - Same env vars as API
+> No `REDIS_URL` needed — reviews run in-process automatically when Redis is absent.
 
 ---
 
-## Step 3: Deploy frontend on Vercel
+## Step 4: Vercel — free frontend (no card)
 
-1. Go to [vercel.com](https://vercel.com) → **Add New Project** → import `devflow-ai`
+1. [vercel.com](https://vercel.com) → **Add New Project** → import `devflow-ai`
 2. **Root Directory:** `frontend`
 3. **Environment Variable:**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_API_URL` | `https://devflow-api.onrender.com` |
+| `NEXT_PUBLIC_API_URL` | your Koyeb URL |
 
-4. Deploy → copy your URL (e.g. `https://devflow-ai.vercel.app`)
+4. Deploy → copy URL (e.g. `https://devflow-ai.vercel.app`)
 
 ---
 
-## Step 4: Link frontend ↔ backend
+## Step 5: Link frontend ↔ backend
 
-1. **Render** → **devflow-api** → **Environment** → set:
+1. **Koyeb** → your service → **Environment** → set:
    - `FRONTEND_URL` = your Vercel URL (no trailing slash)
-2. Copy the same `FRONTEND_URL` to **devflow-worker**
-3. Redeploy both Render services
+   - `BACKEND_URL` = your Koyeb URL
+2. Redeploy
 
 ---
 
-## Step 5: GitHub OAuth (one-time)
+## Step 6: GitHub OAuth
 
-1. [GitHub Developer Settings](https://github.com/settings/developers) → OAuth App (create if needed)
-2. Set:
-   - **Homepage URL:** `https://YOUR-APP.vercel.app`
-   - **Authorization callback URL:** `https://devflow-api.onrender.com/api/auth/github/callback`
-3. Save
+[GitHub Developer Settings](https://github.com/settings/developers) → OAuth App:
 
----
-
-## Step 6: Verify
-
-- [ ] `https://devflow-api.onrender.com/health` returns `{"status":"ok"}`
-- [ ] `https://YOUR-APP.vercel.app` loads
-- [ ] **Sign in with GitHub** works
-- [ ] Add a repository → Refresh → Start review
+| Field | Value |
+|-------|-------|
+| Homepage URL | `https://YOUR-APP.vercel.app` |
+| Callback URL | `https://YOUR-KOYEB-URL/api/auth/github/callback` |
 
 ---
 
-## Environment variables reference
+## Step 7: Verify
 
-### Render (API + worker)
-
-| Variable | Required | Notes |
-|----------|----------|-------|
-| `ENVIRONMENT` | yes | `production` |
-| `DATABASE_URL` | yes | Auto from Postgres |
-| `REDIS_URL` | yes | Auto from Redis |
-| `JWT_SECRET` | yes | Auto-generated in blueprint |
-| `GITHUB_CLIENT_ID` | yes | OAuth App |
-| `GITHUB_CLIENT_SECRET` | yes | OAuth App |
-| `GITHUB_WEBHOOK_SECRET` | yes | Any random string |
-| `OPENAI_API_KEY` | yes | For AI reviews |
-| `FRONTEND_URL` | yes | Your Vercel URL |
-| `BACKEND_URL` | no | Auto via `RENDER_EXTERNAL_URL` |
-
-### Vercel (frontend)
-
-| Variable | Required |
-|----------|----------|
-| `NEXT_PUBLIC_API_URL` | yes — Render API URL |
-
-**Generate JWT secret manually (if not using blueprint):**
-```bash
-openssl rand -hex 32
-```
+- [ ] `/health` on Koyeb returns `{"status":"ok"}`
+- [ ] Vercel app loads
+- [ ] Sign in with GitHub works
+- [ ] Add repo → Refresh → Start review
 
 ---
 
-## Webhooks
+## If Koyeb also asks for a card
 
-Auto-registered when users add repos. Endpoint:
+Try these alternatives (all free tier, Docker-friendly):
 
-```
-https://devflow-api.onrender.com/api/webhooks/github
-```
+| Platform | Notes |
+|----------|-------|
+| [SnapDeploy](https://snapdeploy.dev) | Free containers, no card |
+| [Fly.io](https://fly.io) | Often requires card for verification |
+| [Render](https://render.com) | Web service only (use slim `render.yaml` in repo) — may still ask for card |
 
----
-
-## CI/CD
-
-GitHub Actions runs tests on push (`.github/workflows/ci.yml`).
-
-Render and Vercel auto-deploy on push to `main`.
+**Portfolio fallback:** Deploy **frontend only on Vercel** and keep the backend running locally (`npm run dev`) for live demos.
 
 ---
 
-## Costs (approximate)
+## Costs
 
-| Service | Tier |
+| Service | Cost |
 |---------|------|
-| Vercel | Free (hobby) |
-| Render API | Free (spins down after 15 min idle — first request may be slow) |
-| Render Postgres | Free for 90 days, then ~$7/mo |
-| Render Redis | Free |
-| Render Worker | Starter ~$7/mo (optional but recommended) |
-| OpenAI | Pay per use |
+| Vercel | $0 |
+| Koyeb Nano | $0 |
+| Neon | $0 (3 GB storage) |
+| OpenAI | Pay per use (only when running reviews) |
 
 ---
 
@@ -183,21 +149,14 @@ Render and Vercel auto-deploy on push to `main`.
 
 | Issue | Fix |
 |-------|-----|
-| CORS error | `FRONTEND_URL` on Render must exactly match Vercel URL (no trailing slash) |
-| GitHub OAuth fails | Callback must be `https://YOUR-API.onrender.com/api/auth/github/callback` |
-| API slow on first load | Render free tier cold start — wait ~30s or upgrade plan |
-| AI reviews stuck | Check worker is running; verify `REDIS_URL` and `OPENAI_API_KEY` |
-| 502 on import | Verify GitHub OAuth credentials on Render |
-| Database error | Ensure `DATABASE_URL` uses Postgres (Render auto-fixes `postgres://` → `postgresql://`) |
+| CORS error | `FRONTEND_URL` must exactly match Vercel URL |
+| OAuth fails | Callback URL must match Koyeb URL + `/api/auth/github/callback` |
+| DB connection error | Use Neon `postgresql://` string; app auto-normalizes `postgres://` |
+| Cold start slow | Free tiers sleep when idle — first request takes ~10–30s |
+| Review takes long | Normal on free tier (no background worker) |
 
 ---
 
-## Local vs production
+## Render + Vercel (optional, may require card)
 
-| | Local | Production |
-|--|-------|------------|
-| Start | `npm run dev` | Auto-deploy on git push |
-| Frontend | localhost:3000 | Vercel |
-| Backend | localhost:8000 | Render |
-| Database | SQLite | PostgreSQL (Render) |
-| Sign in | GitHub OAuth | GitHub OAuth |
+See `render.yaml` for a slim Render blueprint (API + Postgres only, no worker). Use only if Render accepts your account without a card.

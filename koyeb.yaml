@@ -1,0 +1,29 @@
+# Koyeb deploy config — Docker build from backend/
+$schema: https://www.koyeb.com/schemas/v1/service.json
+
+name: devflow-api
+
+type: web
+
+ports:
+  - port: 8000
+    protocol: http
+
+routes:
+  - path: /
+    port: 8000
+
+docker:
+  dockerfile: Dockerfile
+
+env:
+  - name: ENVIRONMENT
+    value: production
+  - name: PORT
+    value: "8000"
+
+instances:
+  - type: nano
+
+regions:
+  - was
