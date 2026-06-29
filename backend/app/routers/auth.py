@@ -1,7 +1,7 @@
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -12,32 +12,8 @@ from app.models import User
 from app.routers.admin import is_oauth_configured
 from app.schemas import TokenResponse, UserOut
 from app.services.github import GitHubAPIError, GitHubService
-from app.services.seed import seed_demo_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-@router.get("/demo")
-def demo_login(db: Session = Depends(get_db)):
-    if not settings.allow_demo_login:
-        raise HTTPException(status_code=404, detail="Demo login disabled")
-
-    user = db.query(User).filter(User.github_id == 0).first()
-    if not user:
-        user = User(
-            github_id=0,
-            username="demo-user",
-            email="demo@devflow.ai",
-            avatar_url="https://avatars.githubusercontent.com/u/9919?s=64&v=4",
-            access_token="demo-token",
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    seed_demo_data(db, user)
-    token = create_access_token(user.id)
-    return RedirectResponse(f"{settings.frontend_url}/auth/callback?token={token}")
 
 
 @router.get("/github/status")

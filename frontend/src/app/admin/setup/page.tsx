@@ -148,7 +148,7 @@ export default function AdminSetupPage() {
         </form>
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          Just exploring? <Link href="/" className="text-brand-400 hover:underline">Try Demo mode</Link> — no setup needed.
+          <Link href="/" className="text-brand-400 hover:underline">Back to app</Link>
         </p>
       </div>
     </div>

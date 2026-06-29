@@ -1,0 +1,90 @@
+# Render Blueprint — Vercel hosts the frontend; Render hosts API + worker + data.
+# Dashboard: https://dashboard.render.com → New → Blueprint → connect GitHub repo
+
+services:
+  - type: web
+    name: devflow-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: devflow-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: devflow-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GITHUB_WEBHOOK_SECRET
+        generateValue: true
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: worker
+    name: devflow-worker
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.worker.runner
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: devflow-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: devflow-redis
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: devflow-api
+          envVarKey: JWT_SECRET
+      - key: GITHUB_WEBHOOK_SECRET
+        fromService:
+          type: web
+          name: devflow-api
+          envVarKey: GITHUB_WEBHOOK_SECRET
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: redis
+    name: devflow-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+databases:
+  - name: devflow-db
+    plan: free
+    databaseName: devflow
+    user: devflow

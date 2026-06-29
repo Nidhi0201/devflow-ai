@@ -4,32 +4,45 @@
 
 @layer base {
   body {
-    @apply bg-surface text-slate-100 antialiased;
-    background-image: radial-gradient(ellipse at top, rgba(6, 182, 212, 0.06), transparent 55%);
+    @apply bg-water-gradient text-slate-700 antialiased;
+    background-attachment: fixed;
   }
 }
 
 @layer components {
-  .card {
-    @apply rounded-2xl border border-surface-border bg-surface-card/80 p-6 shadow-lg shadow-black/20 backdrop-blur-sm;
+  .glass {
+    @apply rounded-droplet border border-white/60 bg-white/70 shadow-droplet backdrop-blur-xl;
   }
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:from-brand-400 hover:to-brand-500 disabled:opacity-50;
+
+  .glass-soft {
+    @apply rounded-[1.75rem] border border-mist-border bg-mist-card shadow-droplet backdrop-blur-xl;
   }
-  .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-brand-500/40 hover:bg-surface-card disabled:opacity-50;
+
+  .btn-water {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-water-500 px-5 py-2.5 text-sm font-medium text-white shadow-droplet transition hover:bg-water-600 hover:shadow-float disabled:opacity-50;
   }
-  .badge-open {
-    @apply rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400;
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-mist-border bg-white/50 px-5 py-2.5 text-sm font-medium text-slate-600 backdrop-blur-sm transition hover:border-water-300 hover:bg-white/80 hover:text-water-700 disabled:opacity-50;
   }
-  .badge-closed {
-    @apply rounded-full bg-slate-700/50 px-2.5 py-0.5 text-xs font-medium text-slate-400;
+
+  .badge-live {
+    @apply rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600;
   }
-  .stat-card {
-    @apply card relative overflow-hidden;
+
+  .badge-muted {
+    @apply rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500;
   }
-  .stat-card::before {
-    content: "";
-    @apply absolute inset-0 bg-gradient-mesh opacity-50;
+
+  .page-title {
+    @apply font-display text-2xl font-semibold tracking-tight text-slate-800;
+  }
+
+  .page-sub {
+    @apply text-sm text-slate-500;
+  }
+
+  .droplet-bg {
+    @apply pointer-events-none absolute rounded-full blur-3xl;
   }
 }

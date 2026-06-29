@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "600"],
+});
 
 export const metadata: Metadata = {
-  title: "DevFlow AI — AI-Powered Code Reviews",
-  description: "Automatically analyze pull requests and get AI-powered code review suggestions",
+  title: "DevFlow — AI Code Reviews",
+  description: "Beautiful, intelligent code reviews for every pull request",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={`${sans.variable} ${display.variable} font-sans`}>{children}</body>
     </html>
   );
 }

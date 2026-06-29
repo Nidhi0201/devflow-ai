@@ -44,7 +44,7 @@ else
 fi
 
 echo ""
-echo "Production env vars (set on Railway/Vercel):"
+echo "Production env vars (set on Render + Vercel):"
 for var in GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET JWT_SECRET BACKEND_URL FRONTEND_URL; do
   check_var "$var" && ((PASS++)) || ((FAIL++))
 done
@@ -52,10 +52,10 @@ done
 echo ""
 echo "GitHub OAuth callback should be:"
 echo "  \${BACKEND_URL}/api/auth/github/callback"
-echo "  → ${BACKEND_URL:-https://your-api.up.railway.app}/api/auth/github/callback"
+echo "  → ${BACKEND_URL:-https://devflow-api.onrender.com}/api/auth/github/callback"
 echo ""
 echo "Vercel env var:"
-echo "  NEXT_PUBLIC_API_URL=${BACKEND_URL:-https://your-api.up.railway.app}"
+echo "  NEXT_PUBLIC_API_URL=${BACKEND_URL:-https://devflow-api.onrender.com}"
 echo ""
 
 if [ "$FAIL" -eq 0 ]; then

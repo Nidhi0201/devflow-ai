@@ -3,10 +3,10 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.deps import get_current_user, is_demo_user
+from app.deps import get_current_user
 from app.models import PullRequest, Repository, Review, User
 from app.schemas import ImportRepoRequest, PullRequestOut, RepositoryOut
-from app.services.github import GitHubAPIError, GitHubService, is_demo_token
+from app.services.github import GitHubAPIError, GitHubService
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
@@ -31,9 +31,6 @@ def list_repositories(user: User = Depends(get_current_user), db: Session = Depe
 
 @router.get("/available")
 async def list_available_repos(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if is_demo_user(user) or is_demo_token(user.access_token):
-        return []
-
     try:
         gh = GitHubService(user.access_token)
         github_repos = await gh.list_repos()
@@ -62,12 +59,6 @@ async def import_repository(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if is_demo_user(user) or is_demo_token(user.access_token):
-        raise HTTPException(
-            status_code=400,
-            detail="Sign in with GitHub to import real repositories",
-        )
-
     existing = (
         db.query(Repository)
         .filter(Repository.full_name == body.full_name, Repository.owner_id == user.id)
@@ -121,7 +112,7 @@ async def delete_repository(
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
 
-    if repo.webhook_id and not is_demo_user(user):
+    if repo.webhook_id:
         try:
             gh = GitHubService(user.access_token)
             await gh.delete_webhook(repo.full_name, repo.webhook_id)
@@ -173,12 +164,6 @@ async def sync_pull_requests(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if is_demo_user(user) or is_demo_token(user.access_token):
-        raise HTTPException(
-            status_code=400,
-            detail="Sign in with GitHub to sync real pull requests",
-        )
-
     repo = (
         db.query(Repository)
         .filter(Repository.id == repo_id, Repository.owner_id == user.id)

@@ -125,7 +125,3 @@ def verify_webhook_signature(payload: bytes, signature: str | None) -> bool:
         hashlib.sha256,
     ).hexdigest()
     return hmac.compare_digest(expected, signature)
-
-
-def is_demo_token(access_token: str) -> bool:
-    return access_token in ("demo-token", "")

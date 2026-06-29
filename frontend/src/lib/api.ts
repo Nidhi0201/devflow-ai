@@ -79,11 +79,6 @@ class ApiClient {
     return this.token;
   }
 
-  isDemoUser(): boolean {
-    const u = this.getToken();
-    return !!u;
-  }
-
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -183,10 +178,6 @@ class ApiClient {
 
   getGithubStatus() {
     return this.request<{ configured: boolean; callback_url: string }>("/api/auth/github/status");
-  }
-
-  getDemoLoginUrl() {
-    return `${API_URL}/api/auth/demo`;
   }
 
   async checkHealth(): Promise<boolean> {

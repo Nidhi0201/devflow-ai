@@ -1,5 +1,7 @@
+import os
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -22,7 +24,6 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60 * 24 * 7
     database_url: str = "sqlite:///./devflow.db"
     redis_url: str = "redis://localhost:6379/0"
-    allow_demo_login: bool = True
     environment: str = "development"
     port: int = 8000
 
@@ -30,6 +31,18 @@ class Settings(BaseSettings):
         env_file=_ENV_FILES or ".env",
         extra="ignore",
     )
+
+    @field_validator("database_url")
+    @classmethod
+    def normalize_database_url(cls, v: str) -> str:
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
+
+    def model_post_init(self, __context) -> None:
+        render_url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+        if render_url and self.backend_url in ("http://localhost:8000", ""):
+            self.backend_url = render_url
 
     @property
     def is_production(self) -> bool:

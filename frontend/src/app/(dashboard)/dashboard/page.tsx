@@ -11,24 +11,20 @@ function StatCard({
   label,
   value,
   icon: Icon,
-  accent,
 }: {
   label: string;
   value: string | number;
   icon: React.ElementType;
-  accent: string;
 }) {
   return (
-    <div className="stat-card">
-      <div className="relative">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm text-slate-400">{label}</span>
-          <div className={`rounded-lg p-2 ${accent}`}>
-            <Icon className="h-4 w-4" />
-          </div>
+    <div className="glass-soft p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm text-slate-500">{label}</span>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-water-100 text-water-600">
+          <Icon className="h-4 w-4" />
         </div>
-        <p className="text-3xl font-bold tracking-tight">{value}</p>
       </div>
+      <p className="font-display text-3xl font-semibold tracking-tight text-slate-800">{value}</p>
     </div>
   );
 }
@@ -55,41 +51,40 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  if (loading) return <LoadingSpinner label="Loading dashboard..." />;
+  if (loading) return <LoadingSpinner label="Loading..." />;
   if (error) return <ErrorMessage message={error} onRetry={load} />;
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-slate-400">Overview of your code review activity</p>
+        <h1 className="page-title">Home</h1>
+        <p className="page-sub">Your review activity at a glance</p>
       </div>
 
       <div className="mb-8 grid gap-4 md:grid-cols-4">
-        <StatCard label="Repositories" value={stats?.total_repositories ?? 0} icon={Package} accent="bg-brand-500/15 text-brand-400" />
-        <StatCard label="Open PRs" value={stats?.open_pull_requests ?? 0} icon={GitPullRequest} accent="bg-amber-500/15 text-amber-400" />
-        <StatCard label="Reviews Done" value={stats?.reviews_completed ?? 0} icon={Sparkles} accent="bg-accent-500/15 text-accent-400" />
+        <StatCard label="Repositories" value={stats?.total_repositories ?? 0} icon={Package} />
+        <StatCard label="Open pull requests" value={stats?.open_pull_requests ?? 0} icon={GitPullRequest} />
+        <StatCard label="Reviews completed" value={stats?.reviews_completed ?? 0} icon={Sparkles} />
         <StatCard
-          label="Avg Security Score"
+          label="Security"
           value={stats?.avg_security_score != null ? `${stats.avg_security_score}/10` : "—"}
           icon={Shield}
-          accent="bg-emerald-500/15 text-emerald-400"
         />
       </div>
 
-      <div className="card">
+      <div className="glass-soft p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Your Repositories</h2>
-          <Link href="/repositories" className="text-sm text-brand-400 hover:text-brand-300">
-            Manage repos →
+          <h2 className="font-semibold text-slate-800">Repositories</h2>
+          <Link href="/repositories" className="text-sm font-medium text-water-600 hover:text-water-700">
+            View all
           </Link>
         </div>
         {repos.length === 0 ? (
-          <div className="py-8 text-center text-slate-500">
-            <Package className="mx-auto mb-3 h-10 w-10 opacity-50" />
-            <p>No repositories imported yet.</p>
-            <Link href="/repositories" className="mt-2 inline-block text-brand-400 hover:underline">
-              Import your first repo
+          <div className="py-10 text-center">
+            <Package className="mx-auto mb-3 h-10 w-10 text-water-300" />
+            <p className="text-slate-500">No repositories yet</p>
+            <Link href="/repositories" className="mt-2 inline-block text-sm font-medium text-water-600 hover:text-water-700">
+              Add your first repository
             </Link>
           </div>
         ) : (
@@ -98,16 +93,16 @@ export default function DashboardPage() {
               <Link
                 key={repo.id}
                 href={`/repositories/${repo.id}`}
-                className="flex items-center justify-between rounded-xl border border-surface-border px-4 py-3 transition hover:border-brand-500/30 hover:bg-brand-500/5"
+                className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/50 px-4 py-3 transition hover:border-water-200 hover:bg-white/80"
               >
                 <div>
-                  <p className="font-medium">{repo.full_name}</p>
+                  <p className="font-medium text-slate-700">{repo.full_name}</p>
                   {repo.description && (
                     <p className="text-sm text-slate-500">{repo.description}</p>
                   )}
                 </div>
-                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
-                  {repo.open_pr_count} open PR{repo.open_pr_count !== 1 ? "s" : ""}
+                <span className="badge-muted">
+                  {repo.open_pr_count} open
                 </span>
               </Link>
             ))}

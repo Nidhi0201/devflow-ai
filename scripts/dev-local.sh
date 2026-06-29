@@ -42,7 +42,6 @@ export REDIS_URL="${REDIS_URL:-redis://localhost:6379/0}"
 export FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 export BACKEND_URL="${BACKEND_URL:-http://localhost:8000}"
 export JWT_SECRET="${JWT_SECRET:-dev-local-secret}"
-export ALLOW_DEMO_LOGIN="${ALLOW_DEMO_LOGIN:-true}"
 
 free_port 8000
 free_port 3000
@@ -58,7 +57,7 @@ trap cleanup EXIT INT TERM
 echo "Starting backend at http://localhost:8000"
 (
   cd backend
-  export DATABASE_URL REDIS_URL FRONTEND_URL BACKEND_URL JWT_SECRET ALLOW_DEMO_LOGIN
+  export DATABASE_URL REDIS_URL FRONTEND_URL BACKEND_URL JWT_SECRET
   export GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET GITHUB_WEBHOOK_SECRET OPENAI_API_KEY
   uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ) &
@@ -87,7 +86,6 @@ echo "  DevFlow AI is running"
 echo ""
 echo "  App:  http://localhost:3000"
 echo "  API:  http://localhost:8000"
-echo "  Demo: http://localhost:8000/api/auth/demo"
 echo "============================================"
 echo "Press Ctrl+C to stop."
 echo ""

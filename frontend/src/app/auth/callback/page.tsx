@@ -5,11 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ErrorMessage } from "@/components/ErrorMessage";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { LogoWordmark } from "@/components/Logo";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  invalid_state: "Sign-in session expired. Please try again.",
-  no_token: "GitHub did not return an access token. Please try again.",
-  github_failed: "Could not connect to GitHub. Please try again.",
+  invalid_state: "Your session expired. Please try again.",
+  no_token: "We couldn't complete sign-in. Please try again.",
+  github_failed: "We couldn't connect to GitHub. Please try again.",
 };
 
 function CallbackHandler() {
@@ -31,27 +33,28 @@ function CallbackHandler() {
         .then(() => router.push("/dashboard"))
         .catch(() => setError("Sign-in failed. Please try again."));
     } else {
-      setError("No authentication token received.");
+      setError("Sign-in could not be completed.");
     }
   }, [searchParams, setToken, router]);
 
   if (error) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 p-6">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+        <LogoWordmark />
         <div className="w-full max-w-md">
           <ErrorMessage message={error} onRetry={() => router.push("/")} />
         </div>
-        <Link href="/" className="text-sm text-brand-400 hover:underline">Back to home</Link>
+        <Link href="/" className="text-sm font-medium text-water-600 hover:text-water-700">
+          Back to home
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-brand-400 border-t-transparent" />
-        <p className="text-slate-400">Signing you in...</p>
-      </div>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6">
+      <LogoWordmark />
+      <LoadingSpinner label="Signing you in..." />
     </div>
   );
 }

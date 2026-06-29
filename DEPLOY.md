@@ -1,19 +1,19 @@
 # Deploy DevFlow AI
 
-Deploy frontend on **Vercel**, backend + worker on **Railway**, with PostgreSQL and Redis.
+**Vercel** (frontend) + **Render** (backend, worker, Postgres, Redis)
 
-**Total time: ~20 minutes**
+**Total time: ~25 minutes**
 
 ---
 
-## Architecture (production)
+## Architecture
 
 ```
-Vercel (Next.js)  →  Railway API (FastAPI)  →  PostgreSQL
+Vercel (Next.js)  →  Render API (FastAPI)  →  PostgreSQL
                               ↓
                         GitHub Webhooks
                               ↓
-                   Railway Worker + Redis  →  OpenAI
+                   Render Worker + Redis  →  OpenAI
 ```
 
 ---
@@ -21,132 +21,160 @@ Vercel (Next.js)  →  Railway API (FastAPI)  →  PostgreSQL
 ## Step 1: Push to GitHub
 
 ```bash
-cd devflow
-git init
-git add .
-git commit -m "DevFlow AI — ready for deployment"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/devflow-ai.git
-git push -u origin main
+cd "/Users/nidhiprajapati/DevFlow AI"
+git add -A
+git commit -m "Production deploy: Vercel + Render"
+git push origin main
 ```
 
+Repo: https://github.com/Nidhi0201/devflow-ai
+
 ---
 
-## Step 2: Deploy backend on Railway
+## Step 2: Deploy backend on Render
 
-1. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
-2. Select your repo
-3. Railway creates a service — click it → **Settings**:
-   - **Root Directory:** `backend`
-   - **Builder:** Dockerfile
-4. Click **+ New** → **Database** → **PostgreSQL**
-5. Click **+ New** → **Database** → **Redis**
-6. Click the **API service** → **Variables** → add:
+### Option A — Blueprint (recommended)
+
+1. Go to [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint**
+2. Connect GitHub → select `devflow-ai`
+3. Render reads `render.yaml` and creates:
+   - **devflow-api** (web service)
+   - **devflow-worker** (background worker)
+   - **devflow-db** (PostgreSQL)
+   - **devflow-redis** (Redis)
+4. When prompted, fill in **sync: false** variables on the **devflow-api** service:
 
 | Variable | Value |
 |----------|-------|
-| `ENVIRONMENT` | `production` |
-| `ALLOW_DEMO_LOGIN` | `false` |
-| `JWT_SECRET` | Run `openssl rand -hex 32` |
 | `GITHUB_CLIENT_ID` | From GitHub OAuth App |
 | `GITHUB_CLIENT_SECRET` | From GitHub OAuth App |
-| `GITHUB_WEBHOOK_SECRET` | Any random string |
 | `OPENAI_API_KEY` | Your OpenAI key |
-| `FRONTEND_URL` | `https://YOUR-APP.vercel.app` (update after Step 3) |
-| `BACKEND_URL` | Your Railway API URL (see below) |
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference variable) |
-| `REDIS_URL` | `${{Redis.REDIS_URL}}` (reference variable) |
+| `FRONTEND_URL` | `https://YOUR-APP.vercel.app` (set after Step 3) |
 
-7. **Settings → Networking → Generate Domain** — copy the URL (e.g. `https://devflow-api.up.railway.app`)
-8. Set `BACKEND_URL` to that URL
-9. Deploy should succeed — test: `https://YOUR-API.up.railway.app/health`
+5. Copy the same GitHub/OpenAI/`FRONTEND_URL` vars onto **devflow-worker**
+6. Wait for deploy → copy API URL (e.g. `https://devflow-api.onrender.com`)
+7. Test: `https://devflow-api.onrender.com/health` → `{"status":"ok"}`
 
----
+> **Note:** Render sets `RENDER_EXTERNAL_URL` automatically — `BACKEND_URL` is optional on Render.
 
-## Step 3: Deploy worker on Railway
+> **Worker plan:** The worker uses Render's **Starter** plan (~$7/mo). Without it, AI reviews still run via a thread fallback on the API (fine for testing, not ideal for production).
 
-1. In the same Railway project → **+ New** → **GitHub Repo** → same repo
-2. **Settings:**
+### Option B — Manual setup
+
+1. **New** → **PostgreSQL** (free) → name it `devflow-db`
+2. **New** → **Redis** (free) → name it `devflow-redis`
+3. **New** → **Web Service** → connect repo:
    - **Root Directory:** `backend`
+   - **Runtime:** Python 3
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path:** `/health`
+4. Add env vars (see table below)
+5. **New** → **Background Worker** → same repo, root `backend`:
    - **Start Command:** `python -m app.worker.runner`
-3. **Variables** — copy the same env vars from the API service (use **Shared Variables** or duplicate)
-4. Deploy — worker has no public URL, it runs in the background
+   - Same env vars as API
 
 ---
 
-## Step 4: Deploy frontend on Vercel
+## Step 3: Deploy frontend on Vercel
 
-1. Go to [vercel.com](https://vercel.com) → **Add New Project** → import your GitHub repo
-2. **Settings:**
-   - **Root Directory:** `frontend`
-   - **Framework:** Next.js (auto-detected)
-3. **Environment Variables:**
+1. Go to [vercel.com](https://vercel.com) → **Add New Project** → import `devflow-ai`
+2. **Root Directory:** `frontend`
+3. **Environment Variable:**
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_API_URL` | `https://YOUR-API.up.railway.app` |
+| `NEXT_PUBLIC_API_URL` | `https://devflow-api.onrender.com` |
 
-4. Deploy → copy your Vercel URL (e.g. `https://devflow-ai.vercel.app`)
-5. Go back to **Railway API service** → update `FRONTEND_URL` to your Vercel URL → redeploy
+4. Deploy → copy your URL (e.g. `https://devflow-ai.vercel.app`)
 
 ---
 
-## Step 5: Configure GitHub OAuth (one-time)
+## Step 4: Link frontend ↔ backend
 
-1. [GitHub Developer Settings](https://github.com/settings/developers) → your OAuth App (or create new)
-2. Update:
+1. **Render** → **devflow-api** → **Environment** → set:
+   - `FRONTEND_URL` = your Vercel URL (no trailing slash)
+2. Copy the same `FRONTEND_URL` to **devflow-worker**
+3. Redeploy both Render services
+
+---
+
+## Step 5: GitHub OAuth (one-time)
+
+1. [GitHub Developer Settings](https://github.com/settings/developers) → OAuth App (create if needed)
+2. Set:
    - **Homepage URL:** `https://YOUR-APP.vercel.app`
-   - **Authorization callback URL:** `https://YOUR-API.up.railway.app/api/auth/github/callback`
-3. Save — all users can now sign in with one click
+   - **Authorization callback URL:** `https://devflow-api.onrender.com/api/auth/github/callback`
+3. Save
 
 ---
 
 ## Step 6: Verify
 
-- [ ] `https://YOUR-API.up.railway.app/health` returns `{"status":"ok"}`
+- [ ] `https://devflow-api.onrender.com/health` returns `{"status":"ok"}`
 - [ ] `https://YOUR-APP.vercel.app` loads
-- [ ] Sign in with GitHub works
-- [ ] Import a repo → Sync PRs → Run AI Review
+- [ ] **Sign in with GitHub** works
+- [ ] Add a repository → Refresh → Start review
 
 ---
 
 ## Environment variables reference
 
-See `.env.production.example` for the full list.
+### Render (API + worker)
 
-**Generate JWT secret:**
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `ENVIRONMENT` | yes | `production` |
+| `DATABASE_URL` | yes | Auto from Postgres |
+| `REDIS_URL` | yes | Auto from Redis |
+| `JWT_SECRET` | yes | Auto-generated in blueprint |
+| `GITHUB_CLIENT_ID` | yes | OAuth App |
+| `GITHUB_CLIENT_SECRET` | yes | OAuth App |
+| `GITHUB_WEBHOOK_SECRET` | yes | Any random string |
+| `OPENAI_API_KEY` | yes | For AI reviews |
+| `FRONTEND_URL` | yes | Your Vercel URL |
+| `BACKEND_URL` | no | Auto via `RENDER_EXTERNAL_URL` |
+
+### Vercel (frontend)
+
+| Variable | Required |
+|----------|----------|
+| `NEXT_PUBLIC_API_URL` | yes — Render API URL |
+
+**Generate JWT secret manually (if not using blueprint):**
 ```bash
 openssl rand -hex 32
 ```
 
 ---
 
-## Webhooks (optional, for auto-reviews)
+## Webhooks
 
-GitHub webhooks need a public API URL. Your Railway API URL works directly:
+Auto-registered when users add repos. Endpoint:
 
 ```
-https://YOUR-API.up.railway.app/api/webhooks/github
+https://devflow-api.onrender.com/api/webhooks/github
 ```
-
-Webhooks are auto-registered when users import repos. Ensure `GITHUB_WEBHOOK_SECRET` matches in Railway and your GitHub OAuth App settings.
 
 ---
 
 ## CI/CD
 
-GitHub Actions runs tests on every push (`.github/workflows/ci.yml`).
+GitHub Actions runs tests on push (`.github/workflows/ci.yml`).
 
-Railway and Vercel auto-deploy on push to `main` when connected to GitHub.
+Render and Vercel auto-deploy on push to `main`.
 
 ---
 
 ## Costs (approximate)
 
-| Service | Free tier |
-|---------|-----------|
-| Vercel | Free for hobby |
-| Railway | $5/month credit (enough for demo) |
+| Service | Tier |
+|---------|------|
+| Vercel | Free (hobby) |
+| Render API | Free (spins down after 15 min idle — first request may be slow) |
+| Render Postgres | Free for 90 days, then ~$7/mo |
+| Render Redis | Free |
+| Render Worker | Starter ~$7/mo (optional but recommended) |
 | OpenAI | Pay per use |
 
 ---
@@ -155,10 +183,12 @@ Railway and Vercel auto-deploy on push to `main` when connected to GitHub.
 
 | Issue | Fix |
 |-------|-----|
-| CORS error | Set `FRONTEND_URL` on Railway to exact Vercel URL (no trailing slash) |
-| GitHub OAuth fails | Callback URL must match Railway `BACKEND_URL` + `/api/auth/github/callback` |
-| AI reviews stuck | Check worker service is running and `REDIS_URL` is set |
-| 502 on import | Verify `GITHUB_CLIENT_ID` / `SECRET` are set on Railway |
+| CORS error | `FRONTEND_URL` on Render must exactly match Vercel URL (no trailing slash) |
+| GitHub OAuth fails | Callback must be `https://YOUR-API.onrender.com/api/auth/github/callback` |
+| API slow on first load | Render free tier cold start — wait ~30s or upgrade plan |
+| AI reviews stuck | Check worker is running; verify `REDIS_URL` and `OPENAI_API_KEY` |
+| 502 on import | Verify GitHub OAuth credentials on Render |
+| Database error | Ensure `DATABASE_URL` uses Postgres (Render auto-fixes `postgres://` → `postgresql://`) |
 
 ---
 
@@ -167,6 +197,7 @@ Railway and Vercel auto-deploy on push to `main` when connected to GitHub.
 | | Local | Production |
 |--|-------|------------|
 | Start | `npm run dev` | Auto-deploy on git push |
-| Database | SQLite | PostgreSQL (Railway) |
-| Demo login | Enabled | Disabled |
-| OAuth setup | `/admin/setup` | Env vars on Railway |
+| Frontend | localhost:3000 | Vercel |
+| Backend | localhost:8000 | Render |
+| Database | SQLite | PostgreSQL (Render) |
+| Sign in | GitHub OAuth | GitHub OAuth |

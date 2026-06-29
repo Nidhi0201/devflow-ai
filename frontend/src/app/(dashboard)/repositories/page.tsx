@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, Plus, Trash2, Webhook } from "lucide-react";
+import { Package, Plus, Trash2 } from "lucide-react";
 import { api, Repository } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
@@ -17,13 +16,12 @@ interface AvailableRepo {
 }
 
 export default function RepositoriesPage() {
-  const { isDemo } = useAuth();
   const [repos, setRepos] = useState<Repository[]>([]);
   const [available, setAvailable] = useState<AvailableRepo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showImport, setShowImport] = useState(false);
-  const [importing, setImporting] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const load = async () => {
@@ -32,14 +30,10 @@ export default function RepositoriesPage() {
     try {
       const imported = await api.getRepositories();
       setRepos(imported);
-      if (!isDemo) {
-        const avail = await api.getAvailableRepos();
-        setAvailable(avail.filter((r) => !r.imported));
-      } else {
-        setAvailable([]);
-      }
+      const avail = await api.getAvailableRepos();
+      setAvailable(avail.filter((r) => !r.imported));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load repositories");
+      setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -47,58 +41,48 @@ export default function RepositoriesPage() {
 
   useEffect(() => {
     load();
-  }, [isDemo]);
+  }, []);
 
-  const handleImport = async (full_name: string) => {
-    setImporting(full_name);
+  const handleAdd = async (full_name: string) => {
+    setAdding(full_name);
     setActionError(null);
     try {
       await api.importRepo(full_name);
       await load();
-      setShowImport(false);
+      setShowAdd(false);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Import failed");
+      setActionError(e instanceof Error ? e.message : "Could not add repository");
     } finally {
-      setImporting(null);
+      setAdding(null);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Remove this repository from DevFlow AI?")) return;
+  const handleRemove = async (id: number) => {
+    if (!confirm("Remove this repository?")) return;
     setActionError(null);
     try {
       await api.deleteRepo(id);
       await load();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Delete failed");
+      setActionError(e instanceof Error ? e.message : "Could not remove repository");
     }
   };
 
-  if (loading) return <LoadingSpinner label="Loading repositories..." />;
+  if (loading) return <LoadingSpinner label="Loading..." />;
   if (error) return <ErrorMessage message={error} onRetry={load} />;
 
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Repositories</h1>
-          <p className="text-slate-400">Manage imported GitHub repositories</p>
+          <h1 className="page-title">Repositories</h1>
+          <p className="page-sub">Projects connected to DevFlow</p>
         </div>
-        {!isDemo && (
-          <button onClick={() => setShowImport(!showImport)} className="btn-primary">
-            <Plus className="h-4 w-4" />
-            Import Repository
-          </button>
-        )}
+        <button onClick={() => setShowAdd(!showAdd)} className="btn-water">
+          <Plus className="h-4 w-4" />
+          Add repository
+        </button>
       </div>
-
-      {isDemo && (
-        <div className="card mb-6 border-accent-500/20 bg-accent-500/5">
-          <p className="text-sm text-accent-300">
-            You&apos;re in demo mode with sample data. Sign in with GitHub to import and review your real repositories.
-          </p>
-        </div>
-      )}
 
       {actionError && (
         <div className="mb-4">
@@ -106,30 +90,30 @@ export default function RepositoriesPage() {
         </div>
       )}
 
-      {showImport && (
-        <div className="card mb-6">
-          <h2 className="mb-4 text-lg font-semibold">Available Repositories</h2>
+      {showAdd && (
+        <div className="glass-soft mb-6 p-6">
+          <h2 className="mb-4 font-semibold text-slate-800">Choose a repository</h2>
           {available.length === 0 ? (
-            <p className="text-slate-500">All your GitHub repos are already imported.</p>
+            <p className="text-slate-500">All of your GitHub repositories are already connected.</p>
           ) : (
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {available.map((repo) => (
                 <div
                   key={repo.github_id}
-                  className="flex items-center justify-between rounded-xl border border-surface-border px-4 py-3"
+                  className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/50 px-4 py-3"
                 >
                   <div>
-                    <p className="font-medium">{repo.full_name}</p>
+                    <p className="font-medium text-slate-700">{repo.full_name}</p>
                     {repo.description && (
                       <p className="text-sm text-slate-500">{repo.description}</p>
                     )}
                   </div>
                   <button
-                    onClick={() => handleImport(repo.full_name)}
-                    disabled={importing === repo.full_name}
-                    className="btn-primary text-xs"
+                    onClick={() => handleAdd(repo.full_name)}
+                    disabled={adding === repo.full_name}
+                    className="btn-water text-xs"
                   >
-                    {importing === repo.full_name ? "Importing..." : "Import"}
+                    {adding === repo.full_name ? "Adding..." : "Add"}
                   </button>
                 </div>
               ))}
@@ -139,42 +123,34 @@ export default function RepositoriesPage() {
       )}
 
       {repos.length === 0 ? (
-        <div className="card py-12 text-center">
-          <Package className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-          <p className="mb-4 text-slate-400">No repositories imported yet.</p>
-          {!isDemo && (
-            <button onClick={() => setShowImport(true)} className="btn-primary">
-              <Plus className="h-4 w-4" />
-              Import your first repo
-            </button>
-          )}
+        <div className="glass-soft py-16 text-center">
+          <Package className="mx-auto mb-4 h-12 w-12 text-water-300" />
+          <p className="mb-4 text-slate-500">No repositories connected yet</p>
+          <button onClick={() => setShowAdd(true)} className="btn-water">
+            <Plus className="h-4 w-4" />
+            Add your first repository
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
           {repos.map((repo) => (
-            <div key={repo.id} className="card flex items-center justify-between">
+            <div key={repo.id} className="glass-soft flex items-center justify-between p-5">
               <Link href={`/repositories/${repo.id}`} className="flex-1">
-                <p className="font-medium hover:text-brand-300">{repo.full_name}</p>
+                <p className="font-medium text-slate-700 hover:text-water-700">{repo.full_name}</p>
                 {repo.description && (
                   <p className="text-sm text-slate-500">{repo.description}</p>
                 )}
-                <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-                  <span>{repo.open_pr_count} open PR{repo.open_pr_count !== 1 ? "s" : ""}</span>
-                  {repo.webhook_active && (
-                    <span className="flex items-center gap-1 text-emerald-400">
-                      <Webhook className="h-3 w-3" /> Webhook active
-                    </span>
-                  )}
-                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {repo.open_pr_count} open pull request{repo.open_pr_count !== 1 ? "s" : ""}
+                </p>
               </Link>
-              {!isDemo && (
-                <button
-                  onClick={() => handleDelete(repo.id)}
-                  className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
+              <button
+                onClick={() => handleRemove(repo.id)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                aria-label="Remove repository"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
           ))}
         </div>

@@ -27,7 +27,6 @@ jobs:
         env:
           DATABASE_URL: sqlite:///:memory:
           JWT_SECRET: test-secret
-          ALLOW_DEMO_LOGIN: "true"
           GITHUB_WEBHOOK_SECRET: test-webhook-secret
         run: pytest tests/ -v
 

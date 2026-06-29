@@ -53,10 +53,6 @@ def get_current_user(
     return user
 
 
-def is_demo_user(user: User) -> bool:
-    return user.github_id == 0
-
-
 def parse_json_list(value: str | None) -> list[str]:
     import json
 

@@ -3,7 +3,7 @@ import json
 from app.database import SessionLocal
 from app.models import PullRequest, Repository, Review, User
 from app.services.ai import AIService
-from app.services.github import GitHubAPIError, GitHubService, is_demo_token
+from app.services.github import GitHubAPIError, GitHubService
 
 
 def run_ai_review(pull_request_id: int) -> dict:
@@ -34,7 +34,7 @@ def run_ai_review(pull_request_id: int) -> dict:
 
         diff = ""
         files = []
-        if user and repo and not is_demo_token(user.access_token):
+        if user and repo and user.access_token:
             import asyncio
 
             gh = GitHubService(user.access_token)
