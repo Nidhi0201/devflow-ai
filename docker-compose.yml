@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: devflow
+      POSTGRES_PASSWORD: devflow
+      POSTGRES_DB: devflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://devflow:devflow@postgres:5432/devflow
+      REDIS_URL: redis://redis:6379/0
+      FRONTEND_URL: http://localhost:3000
+      BACKEND_URL: http://localhost:8000
+      JWT_SECRET: dev-local-secret-change-in-production
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-dev}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-dev}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-dev-webhook-secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://devflow:devflow@postgres:5432/devflow
+      REDIS_URL: redis://redis:6379/0
+      FRONTEND_URL: http://localhost:3000
+      BACKEND_URL: http://localhost:8000
+      JWT_SECRET: dev-local-secret-change-in-production
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-dev}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-dev}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-dev-webhook-secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: python -m app.worker.runner
+
+volumes:
+  postgres_data:

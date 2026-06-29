@@ -1,0 +1,10 @@
+{
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "backend/Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "python -m app.worker.runner",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

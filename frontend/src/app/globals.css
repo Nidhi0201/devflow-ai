@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-slate-100 antialiased;
+    background-image: radial-gradient(ellipse at top, rgba(6, 182, 212, 0.06), transparent 55%);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-surface-border bg-surface-card/80 p-6 shadow-lg shadow-black/20 backdrop-blur-sm;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:from-brand-400 hover:to-brand-500 disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-brand-500/40 hover:bg-surface-card disabled:opacity-50;
+  }
+  .badge-open {
+    @apply rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-400;
+  }
+  .badge-closed {
+    @apply rounded-full bg-slate-700/50 px-2.5 py-0.5 text-xs font-medium text-slate-400;
+  }
+  .stat-card {
+    @apply card relative overflow-hidden;
+  }
+  .stat-card::before {
+    content: "";
+    @apply absolute inset-0 bg-gradient-mesh opacity-50;
+  }
+}
